@@ -12,10 +12,24 @@ public class LinkValidatorSync {
 
     public static void main(String[] args) throws IOException {
 
+
+         client = HttpClient.newHttpClient();
+        Files.lines(Path.of("urls.txt")).map(LinkValidatorSync::validateLink).forEach(System.out::println);
+
     }
 
     private static String validateLink(String link) {
-        return null;
+
+        HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(link)).GET().build();
+        try {
+            HttpResponse<Void> response = client.send(httpRequest,HttpResponse.BodyHandlers.discarding());
+            return responseToString(response);
+        } catch ( IOException | InterruptedException e ) {
+            return String.format("%s -> %s", link, false);
+        }
+
+
+
     }
 
     private static String responseToString(HttpResponse<Void> response) {
