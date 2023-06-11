@@ -5,6 +5,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
+import java.util.stream.Collectors;
 
 public class LinkValidatorAsync {
 
@@ -13,23 +15,22 @@ public class LinkValidatorAsync {
     public static void main(String[] args) throws IOException {
         client = HttpClient.newHttpClient();
 
-        Files.lines(Path.of("urls.txt"))
+        var futures = Files.lines(Path.of("urls.txt"))
                 .map(LinkValidatorAsync::validateLink)
-                .forEach(System.out::println);
+                .collect(Collectors.toList());
+
+        futures.stream().map(CompletableFuture::join).forEach(System.out::println);
+
     }
 
-    private static String validateLink(String link) {
+    private static CompletableFuture<String> validateLink(String link) {
         HttpRequest request = HttpRequest.newBuilder(URI.create(link))
                 .GET()
                 .build();
 
-        try {
-            HttpResponse<Void> response = client.send(request,
-                    HttpResponse.BodyHandlers.discarding());
-            return responseToString(response);
-        } catch (IOException | InterruptedException e) {
-            return String.format("%s -> %s", link, false);
-        }
+        return client.sendAsync(request, HttpResponse.BodyHandlers.discarding()).
+                thenApply(LinkValidatorAsync::responseToString).
+                exceptionally(error -> String.format("%s -> %s", link, false));
     }
 
     private static String responseToString(HttpResponse<Void> response) {
